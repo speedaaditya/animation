@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FrameSync - Multi-Device Video Frame Analyzer</title>
     <style>
+        /* All the previous CSS remains the same */
         :root {
             --primary: #4361ee;
             --primary-light: #4895ef;
@@ -443,6 +444,19 @@
             font-size: 0.9rem;
         }
         
+        /* NEW: Preview controls for the GIF-like video */
+        .preview-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .preview-controls button {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+        }
+        
         @media (max-width: 1024px) {
             .preview-section {
                 grid-template-columns: 1fr;
@@ -563,7 +577,20 @@
                 <h2 class="card-title"><i>🎬</i> Video Preview</h2>
                 <div class="preview-container">
                     <div class="preview-label">Looping Preview</div>
-                    <video id="video-preview" controls></video>
+                    <!-- CHANGED: Removed controls and added muted autoplay loop -->
+                    <video id="video-preview" muted autoplay loop></video>
+                </div>
+                <!-- NEW: Added controls for the GIF-like preview -->
+                <div class="preview-controls">
+                    <button id="play-preview">
+                        <i>▶️</i> Play
+                    </button>
+                    <button id="pause-preview">
+                        <i>⏸️</i> Pause
+                    </button>
+                    <button id="restart-preview">
+                        <i>⏮️</i> Restart
+                    </button>
                 </div>
                 <div class="video-info" id="video-info">
                     No video loaded. Upload a video or join a session with an existing video.
@@ -625,7 +652,7 @@
 
     <script>
         // Firebase configuration - REPLACE WITH YOUR ACTUAL CONFIG
-        const firebaseConfig = {
+                const firebaseConfig = {
   apiKey: "AIzaSyBJW3NTVkqOXErSNOXzwXmXr1XMy--2jsA",
   authDomain: "animation-f8b6a.firebaseapp.com",
   projectId: "animation-f8b6a",
@@ -634,7 +661,6 @@
   appId: "1:66022891515:web:f061b4aa0e235ac7c5355e",
   measurementId: "G-GHNZJ0L46G"
 };
-
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -656,6 +682,11 @@
             const status = document.getElementById('status');
             const errorMessage = document.getElementById('error-message');
             const thumbnailsContainer = document.getElementById('thumbnails-container');
+            
+            // NEW: Preview control buttons
+            const playPreviewBtn = document.getElementById('play-preview');
+            const pausePreviewBtn = document.getElementById('pause-preview');
+            const restartPreviewBtn = document.getElementById('restart-preview');
             
             // Firebase elements
             const sessionIdElement = document.getElementById('session-id');
@@ -870,6 +901,26 @@
                 });
                 
                 thumbnailsContainer.appendChild(thumbnailsGrid);
+            }
+
+            // NEW: Preview control functions
+            function playPreview() {
+                if (videoPreview.src) {
+                    videoPreview.play();
+                }
+            }
+            
+            function pausePreview() {
+                if (videoPreview.src) {
+                    videoPreview.pause();
+                }
+            }
+            
+            function restartPreview() {
+                if (videoPreview.src) {
+                    videoPreview.currentTime = 0;
+                    videoPreview.play();
+                }
             }
 
             // File upload handling
@@ -1096,6 +1147,11 @@
                 errorMessage.style.display = 'none';
             }
 
+            // NEW: Preview control event listeners
+            playPreviewBtn.addEventListener('click', playPreview);
+            pausePreviewBtn.addEventListener('click', pausePreview);
+            restartPreviewBtn.addEventListener('click', restartPreview);
+
             // Firebase button event listeners
             newSessionBtn.addEventListener('click', createNewSession);
             joinSessionBtn.addEventListener('click', joinSession);
@@ -1120,4 +1176,4 @@
         });
     </script>
 </body>
-    </html>
+                            </html>
