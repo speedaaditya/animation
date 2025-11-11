@@ -949,46 +949,49 @@ const firebaseConfig = {
                     });
             }
 
-            // NEW APPROACH: More reliable video loading
+            // NEW: Completely rewritten video loading function
             async function loadVideoFromUrl(videoUrl, videoName) {
                 try {
                     status.textContent = "Loading video from session...";
                     videoLoading.style.display = 'block';
                     
-                    // Create a new video element to test the URL
-                    const tempVideo = document.createElement('video');
-                    tempVideo.muted = true;
+                    // Reset video element completely
+                    videoPreview.pause();
+                    videoPreview.removeAttribute('src');
+                    videoPreview.load();
                     
-                    // Use a more direct approach to set the source
-                    videoPreview.src = videoUrl;
+                    // Use fetch to get the video as a blob
+                    const response = await fetch(videoUrl);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
                     
-                    // Wait for the video to be ready to play
-                    await new Promise((resolve, reject) => {
-                        const handleCanPlay = () => {
-                            videoPreview.removeEventListener('canplay', handleCanPlay);
-                            videoPreview.removeEventListener('error', handleError);
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    
+                    // Set up event listeners for the video
+                    const videoLoadPromise = new Promise((resolve, reject) => {
+                        const onLoaded = () => {
+                            videoPreview.removeEventListener('loadeddata', onLoaded);
+                            videoPreview.removeEventListener('error', onError);
                             resolve();
                         };
                         
-                        const handleError = (e) => {
-                            videoPreview.removeEventListener('canplay', handleCanPlay);
-                            videoPreview.removeEventListener('error', handleError);
+                        const onError = (e) => {
+                            videoPreview.removeEventListener('loadeddata', onLoaded);
+                            videoPreview.removeEventListener('error', onError);
                             reject(new Error('Video failed to load'));
                         };
                         
-                        videoPreview.addEventListener('canplay', handleCanPlay);
-                        videoPreview.addEventListener('error', handleError);
+                        videoPreview.addEventListener('loadeddata', onLoaded);
+                        videoPreview.addEventListener('error', onError);
                         
-                        // Load the video
-                        videoPreview.load();
-                        
-                        // Set a timeout
-                        setTimeout(() => {
-                            if (videoPreview.readyState < 3) {
-                                reject(new Error('Video loading timeout'));
-                            }
-                        }, 10000);
+                        // Set the video source
+                        videoPreview.src = objectUrl;
                     });
+                    
+                    // Wait for video to load
+                    await videoLoadPromise;
                     
                     videoLoading.style.display = 'none';
                     
@@ -997,7 +1000,7 @@ const firebaseConfig = {
                     pausePreviewBtn.disabled = false;
                     restartPreviewBtn.disabled = false;
                     
-                    // Try to play the video
+                    // Try to play the video for GIF-like experience
                     try {
                         await videoPreview.play();
                         status.textContent = "Video loaded and playing";
@@ -1006,6 +1009,7 @@ const firebaseConfig = {
                         status.textContent = "Video loaded - Click play to start";
                     }
                     
+                    // Update video info
                     videoInfo.innerHTML = `
                         <strong>Video:</strong> ${videoName || 'Session Video'}<br>
                         <strong>Duration:</strong> ${formatTime(videoPreview.duration)}<br>
@@ -1020,21 +1024,26 @@ const firebaseConfig = {
                     videoLoading.style.display = 'none';
                     showError("Failed to load video from session: " + error.message);
                     
-                    // Try alternative approach - create object URL from fetch
+                    // Try a simpler approach as fallback
                     try {
                         status.textContent = "Trying alternative loading method...";
-                        const response = await fetch(videoUrl);
-                        const blob = await response.blob();
-                        const objectUrl = URL.createObjectURL(blob);
-                        videoPreview.src = objectUrl;
+                        videoPreview.src = videoUrl;
                         
                         await new Promise((resolve, reject) => {
-                            videoPreview.oncanplay = resolve;
-                            videoPreview.onerror = reject;
-                        });
-                        
-                        videoPreview.play().catch(e => {
-                            console.log("Autoplay prevented with blob URL");
+                            const onCanPlay = () => {
+                                videoPreview.removeEventListener('canplay', onCanPlay);
+                                videoPreview.removeEventListener('error', onError);
+                                resolve();
+                            };
+                            
+                            const onError = (e) => {
+                                videoPreview.removeEventListener('canplay', onCanPlay);
+                                videoPreview.removeEventListener('error', onError);
+                                reject(new Error('Alternative method failed'));
+                            };
+                            
+                            videoPreview.addEventListener('canplay', onCanPlay);
+                            videoPreview.addEventListener('error', onError);
                         });
                         
                         status.textContent = "Video loaded with alternative method";
